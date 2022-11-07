@@ -7,13 +7,15 @@ A copy of https://github.com/torvalds/linux/blob/master/tools/spi/spidev_test.c
  * The SPI modes were changed from `SPI_IOC_WR_MODE32` and `SPI_IOC_RD_MODE32` to
    `SPI_IOC_WR_MODE` and `SPI_IOC_RD_MODE` respectively.
 
+**Forked by Jason Klas on 11/7/22 to the Alcor-Scientific organization.**
+
 ## What is this for?
 
 If you are experiencing issues with the [SPI](https://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus)
 bus on Raspberry Pi or other Linux-based single-board computers, this program
 (plus a single jumper or wire) will confirm whether SPI is working properly.
 
-## Building on Raspberry Pi / Orange Pi
+## Building on miniiSED
 
 Download the code from github and compile with:
 
@@ -21,57 +23,72 @@ Download the code from github and compile with:
     $ cd spidev-test
     $ gcc spidev_test.c -o spidev_test
 
-## Enabling SPI on the Raspberry Pi
+## Enabling external SPI on the miniiSED
 
-By default, the SPI kernel driver is **NOT** enabled on the Raspberry Pi Raspian image.
-You can confirm whether it is enabled using the shell commands below::
+You need to have a DTB file (`imx7d-sbc-imx7.dts` by default) installed in `/dev/mmcblk2p1` that wires up ecSPI3 as following:
 
-    $ lsmod | grep -i spi
-    spi_bcm2835             7424  0
+```
+&ecspi3 {
+	fsl,spi-num-chipselects = <1>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ecspi3 &pinctrl_ecspi3_cs>;
+	cs-gpios = <&gpio4 11 0>;
+	status = "okay";
 
-Depending on the hardware/kernel version, this may report **spi_bcm2807** rather
-than **spi_bcm2835** - either should be adequate.
+	spidev@0 {
+		reg = <0x0>;
+		compatible = "rohm,dh2228fv", "spidev";
+		spi-max-frequency = <10000000>;
+	};
+};
 
-Check whether the devices are successfully installed in `/dev`:
+&iomuxc {
+	pinctrl-names = "default";
 
-    $ ls -l /dev/spi*
-    crw------- 1 root root 153, 0 Jan  1  1970 /dev/spidev0.0
-    crw------- 1 root root 153, 1 Jan  1  1970 /dev/spidev0.1
+    ...
 
-If you have no `/dev/spi` files and nothing is showing using `lsmod` then this
-implies the kernel SPI driver is not loaded. Enable the SPI as follows (steps
-taken from https://learn.sparkfun.com/tutorials/raspberry-pi-spi-and-i2c-tutorial#spi-on-pi):
+	pinctrl_ecspi3: ecspi3grp {
+		fsl,pins = <
+			MX7D_PAD_I2C1_SDA__ECSPI3_MOSI          0xf /* P7-7 */
+			MX7D_PAD_I2C1_SCL__ECSPI3_MISO          0xf /* P7-8 */
+			MX7D_PAD_I2C2_SCL__ECSPI3_SCLK          0xf /* P7-6 */
+		>;
+	};
 
-  1. Run `sudo raspi-config`
-  2. Use the down arrow to select `9 Advanced Options`
-  3. Arrow down to `A6 SPI.`
-  4. Select **yes** when it asks you to enable SPI,
-  5. Also select **yes** when it asks about automatically loading the kernel module.
-  6. Use the right arrow to select the **<Finish>** button.
-  7. Select **yes** when it asks to reboot.
+	pinctrl_ecspi3_cs: ecspi3_cs_grp {
+		fsl,pins = <
+			MX7D_PAD_I2C2_SDA__GPIO4_IO11           0x34 /* P7-9 */
+		>;
+	};
+```
 
-![raspi-config](https://raw.githubusercontent.com/rm-hull/luma.led_matrix/master/doc/images/raspi-spi.png)
+You also need a `zImage` Linux kernel installed in `/dev/mmcblk2p1` built with these configuration options:
 
-After rebooting re-check that the `lsmod | grep -i spi` command shows whether
-SPI driver is loaded before proceeding. If you are stil experiencing problems, refer to the official
-Raspberry Pi [SPI troubleshooting guide](https://www.raspberrypi.org/documentation/hardware/raspberrypi/spi/README.md#troubleshooting)
+```
+CONFIG_SPI=y
+CONFIG_SPI_IMX=y
+CONFIG_SPI_SPIDEV=y
+```
 
-## Testing the SPI bus
+## Testing the external SPI bus
 
-On RPi and other pin-compatible boards, connect pin 19 (BCM 10 = MOSI) to
-pin 21 (BCM 9 = MISO) to form a loopback connection. See https://pinout.xyz
-for further details.
+You need to run the server code to expose the CS GPIO pin for the `benchmark-external-spi.sh` and `test-external-spi.sh` scripts to work.
 
-Run the compiled executable:
+To test integrity of the external SPI bus, `cd` into this repo:
 
-    $ ./spidev_test -v
-    spi mode: 0x0
-    bits per word: 8
-    max speed: 500000 Hz (500 KHz)
-    TX | FF FF FF FF FF FF 40 00 00 00 00 95 FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF F0 0D  | ......@....?..................?.
-    RX | FF FF FF FF FF FF 40 00 00 00 00 95 FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF F0 0D  | ......@....?..................?.
+```bash
+export EXPECTED_SW_VERSION=RBT0100H
+export SPI_CLOCK=500000
+time bash ./test-external-spi.sh
+```
 
-_(run with `sudo` if it shows an error about permissions)_
+To test the speed of reading the external SPI bus, `cd` into this repo:
+
+```bash
+export NUM_BENCHMARK_SPI_READS=10000
+export SPI_CLOCK=500000
+time bash ./benchmark-external-spi.sh
+```
 
 ## Interpretting the results
 
