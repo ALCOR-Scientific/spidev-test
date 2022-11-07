@@ -17,11 +17,12 @@ bus on Raspberry Pi or other Linux-based single-board computers, this program
 
 ## Building on miniiSED
 
-Download the code from github and compile with:
+Clone this repo and compile with:
 
-    $ git clone https://github.com/rm-hull/spidev-test
-    $ cd spidev-test
-    $ gcc spidev_test.c -o spidev_test
+```bash
+cd spidev-test
+gcc spidev_test.c -o spidev_test
+```
 
 ## Enabling external SPI on the miniiSED
 
