@@ -79,7 +79,7 @@ To test integrity of the external SPI bus, `cd` into this repo:
 
 ```bash
 export EXPECTED_SW_VERSION=RBT0100H
-export SPI_CLOCK=500000
+export SPI_CLOCK=2000000
 time bash ./test-external-spi.sh
 ```
 
@@ -87,9 +87,11 @@ To test the speed of reading the external SPI bus, `cd` into this repo:
 
 ```bash
 export NUM_BENCHMARK_SPI_READS=10000
-export SPI_CLOCK=500000
+export SPI_CLOCK=2000000
 time bash ./benchmark-external-spi.sh
 ```
+
+There are also JS code snippets you can put in `server/lib/<instrument>/index.js` to test it in the production environment.
 
 ## Interpretting the results
 

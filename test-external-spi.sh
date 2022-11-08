@@ -2,14 +2,14 @@
 set -u
 
 if [ ! -d /sys/class/gpio/gpio62/ ]; then
-  echo 'Run /home/miniised/start_server.sh script then kill it to expose external SPI GPIO pins'
+  echo "Run /home/`whoami`/start_server.sh script then kill it to expose external SPI GPIO pins"
   exit 1
 fi;
 
 echo '# Testing integrity of external SPI communications with MCU by reading sw_version SPI table register'
 TOTAL_READ_ATTEMPTS=0
 SPI_READ_FAILURES=0
-echo "external SPI clock: ${SPI_CLOCK}hz"
+echo "external SPI clock: ${SPI_CLOCK} hz"
 echo "expected output: ${EXPECTED_SW_VERSION}"
 while [ true ]; do
 	READ_ATTEMPTS=0
@@ -23,7 +23,7 @@ while [ true ]; do
 		VALID_SW_VERSION=`echo $SPIDEV_TEST_OUTPUT | grep ${EXPECTED_SW_VERSION}`
 		
 		if [ `expr $TOTAL_READ_ATTEMPTS % 1000` = 0 ]; then
-			echo "external SPI clock: ${SPI_CLOCK}hz"
+			echo "external SPI clock: ${SPI_CLOCK} hz"
 			echo "Total sw_version register read attempts: ${TOTAL_READ_ATTEMPTS}"
 			echo "Failures to correctly read sw_version register: ${SPI_READ_FAILURES}"
 			echo "Failure rate: `echo ${SPI_READ_FAILURES}/${TOTAL_READ_ATTEMPTS} | bc -l`"
